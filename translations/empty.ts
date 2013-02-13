@@ -345,16 +345,33 @@
         <source>Successfully exported</source>
         <translation type="unfinished"></translation>
     </message>
-</context>
-<context>
-    <name>AutoFillNotification</name>
     <message>
-        <source>Do you want QupZilla to remember the password for &lt;b&gt;%1&lt;/b&gt; on %2?</source>
+        <source>Search</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
-    <name>AutoFillWidget</name>
+    <name>AutoFillNotification</name>
+    <message>
+        <source>on %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>for &lt;b&gt;%1&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want QupZilla to remember the password %1 %2?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do you want QupZilla to update saved password %1?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Update</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <source>Remember</source>
         <translation type="unfinished"></translation>
@@ -365,6 +382,21 @@
     </message>
     <message>
         <source>Not Now</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>AutoFillWidget</name>
+    <message>
+        <source>Choose username to login</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Login</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Login as &lt;b&gt;%1&lt;/b&gt;</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -608,6 +640,18 @@
         <source>Change icon</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Expand All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Collapse All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose parent folder for new folder: </source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>BookmarksModel</name>
@@ -723,6 +767,17 @@
     </message>
     <message>
         <source>Open bookmark in new tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>BookmarksTree</name>
+    <message>
+        <source>Bookmarks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>New Folder...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1043,6 +1098,34 @@
         <source>Add to blacklist</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Cookie Settings&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow storing of cookies</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Delete cookies on close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Match domain exactly</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter tracking cookies</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Warning:&lt;/b&gt; Match domain exactly and filter tracking cookies options can lead to deny some cookies from sites. If you have problems with cookies, try to disable this options first!</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DownloadFileHelper</name>
@@ -1313,6 +1396,110 @@
     </message>
 </context>
 <context>
+    <name>FtpDownloader</name>
+    <message>
+        <source>Cancelled!</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>FtpSchemeReply</name>
+    <message>
+        <source>Unknown command</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Up to higher level directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show hidden files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Last modified</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Index for %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Folder is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>HTML5PermissionsDialog</name>
+    <message>
+        <source>HTML5 Permissions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Notifications</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Site</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Geolocation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deny</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Behaviour</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>HTML5PermissionsNotification</name>
+    <message>
+        <source>Remember</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Deny</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>this site</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow %1 to show desktop notifications?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow %1 to locate your position?</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>History</name>
     <message>
         <source>No Named Page</source>
@@ -1487,6 +1674,45 @@
     </message>
 </context>
 <context>
+    <name>JsOptions</name>
+    <message>
+        <source>JavaScript Options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Allow JavaScript to:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Close windows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open popup windows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change window size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hide menu bar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hide status bar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hide tool bar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Access clipboard</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>LicenseViewer</name>
     <message>
         <source>License Viewer</source>
@@ -1495,10 +1721,6 @@
 </context>
 <context>
     <name>LocationBar</name>
-    <message>
-        <source>Add RSS from this page...</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message>
         <source>Enter URL address or search on %1</source>
         <translation type="unfinished"></translation>
@@ -1522,7 +1744,7 @@
     </message>
 </context>
 <context>
-    <name>LocationCompleterDelegate</name>
+    <name>LocationCompleterView</name>
     <message>
         <source>Switch to tab</source>
         <translation type="unfinished"></translation>
@@ -1613,10 +1835,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Authorization required</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Username: </source>
         <translation type="unfinished"></translation>
     </message>
@@ -1633,11 +1851,27 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Proxy authorization required</source>
+        <source>A username and password are being requested by proxy %1. </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>A username and password are being requested by proxy %1. </source>
+        <source>Login anonymously</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>A username and password are being requested by %1:%2.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Authorisation required</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>FTP authorisation required</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Proxy authorisation required</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1715,9 +1949,100 @@
     </message>
 </context>
 <context>
+    <name>PopupWebView</name>
+    <message>
+        <source>Inspect Element</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>PopupWindow</name>
     <message>
         <source>%1 - QupZilla</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Save Page As...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Save Page Screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send Link...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Print...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Undo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Redo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Cut</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>C&amp;opy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Paste</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Select All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Find</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>View</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Stop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Reload</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom &amp;In</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Zoom &amp;Out</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Page Source</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2176,35 +2501,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Filter tracking cookies</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Allow storing of cookies</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Delete cookies on close</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Match domain exactly</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;b&gt;Warning:&lt;/b&gt; Match domain exactly and filter tracking cookies options can lead to deny some cookies from sites. If you have problems with cookies, try to disable this options first!</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Cookies Manager</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>&lt;b&gt;SSL Certificates&lt;/b&gt;</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>JavaScript can access clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2217,10 +2518,6 @@
     </message>
     <message>
         <source>Send Referer header to servers</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Block popup windows</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2396,14 +2693,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Tabs behavior</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Address Bar behavior</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Show loading progress in address bar</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2420,27 +2709,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>If unchecked the bar will adapt to the background color.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>custom color:</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Select color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Many styles use Highlight color for the progressbar.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>set to &quot;Highlight&quot; color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If enabled the default engine will be taken for searching without search shortcut in the address bar instead of the engine currently selected in the web search bar.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2497,6 +2766,66 @@
     </message>
     <message>
         <source>Animated scrolling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open new empty tabs after active tab</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable caret browsing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;JavaScript&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manage JavaScript privacy options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>JavaScript options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manage Cookies</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;HTML5 Permissions&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manage HTML5 permissions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Custom color:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Reset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>HTML5 Permissions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Tabs behaviour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Address Bar behaviour</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Store cache in:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose cache path...</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2883,6 +3212,14 @@ Are you sure to quit QupZilla?</source>
     </message>
     <message>
         <source>There are still open tabs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable &amp;Caret Browsing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&amp;Tabs on Top</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3407,6 +3744,13 @@ Maybe relaunch with administrator right do a magic for you! ;)</source>
     </message>
 </context>
 <context>
+    <name>RssIcon</name>
+    <message>
+        <source>Add RSS from this page...</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SSLManager</name>
     <message>
         <source>CA Authorities Certificates</source>
@@ -3881,6 +4225,18 @@ After adding or removing certificate paths, it is neccessary to restart QupZilla
         <source>Enter line number</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Load in page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Source loaded in page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cannot load in page. Page has been closed.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>SourceViewerSearch</name>
@@ -3909,6 +4265,64 @@ After adding or removing certificate paths, it is neccessary to restart QupZilla
     </message>
     <message>
         <source>Image files</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SpellCheckDialog</name>
+    <message>
+        <source>SpellCheck</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Change...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;User dictionary&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Using Hunspell library</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose dictionary path...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new word...</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add new word:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>&lt;b&gt;Dictionary path&lt;/b&gt;</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Speller</name>
+    <message>
+        <source>No suggestions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add to dictionary</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4486,6 +4900,14 @@ After adding or removing certificate paths, it is neccessary to restart QupZilla
     </message>
     <message>
         <source>Create Search Engine</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Check &amp;Spelling</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Languages</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

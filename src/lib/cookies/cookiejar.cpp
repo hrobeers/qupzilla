@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -27,58 +27,6 @@
 #include <QWebPage> // QTWEBKIT_VERSION_CHECK macro
 
 //#define COOKIE_DEBUG
-
-#if QTWEBKIT_TO_2_3
-static bool blockThirdParty(QString string, QString domain)
-{
-    if (string.isEmpty()) {
-        // Some cookies have empty domain() ... bug?
-        return false;
-    }
-
-    if (string.startsWith(QLatin1String("www."))) {
-        string = string.mid(3);
-    }
-
-    if (domain.startsWith(QLatin1String("www."))) {
-        domain = domain.mid(4);
-    }
-
-    return !domain.endsWith(string);
-}
-#endif
-
-static bool matchDomain(const QString &domain, const QString &filter)
-{
-    // According to RFC 6265
-
-    if (domain == filter) {
-        return true;
-    }
-
-    if (!domain.endsWith(filter)) {
-        return false;
-    }
-
-    int index = domain.indexOf(filter);
-
-    return (index > 0 && filter[0] == QLatin1Char('.'));
-}
-
-static int listContainsDomain(const QStringList &list, const QString &domain)
-{
-    if (domain.isEmpty()) {
-        return -1;
-    }
-
-    foreach(const QString & d, list) {
-        if (matchDomain(domain, d)) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
 
 CookieJar::CookieJar(QupZilla* mainClass, QObject* parent)
     : QNetworkCookieJar(parent)
@@ -119,8 +67,8 @@ bool CookieJar::rejectCookie(const QString &domain, const QNetworkCookie &cookie
     const QString &cookieDomain = cookie.domain();
 
     if (!m_allowCookies) {
-        int result = listContainsDomain(m_whitelist, cookieDomain);
-        if (result != 1) {
+        bool result = listMatchesDomain(m_whitelist, cookieDomain);
+        if (!result) {
 #ifdef COOKIE_DEBUG
             qDebug() << "not in whitelist" << cookie;
 #endif
@@ -129,8 +77,8 @@ bool CookieJar::rejectCookie(const QString &domain, const QNetworkCookie &cookie
     }
 
     if (m_allowCookies) {
-        int result = listContainsDomain(m_blacklist, cookieDomain);
-        if (result == 1) {
+        bool result = listMatchesDomain(m_blacklist, cookieDomain);
+        if (result) {
 #ifdef COOKIE_DEBUG
             qDebug() << "found in blacklist" << cookie;
 #endif
@@ -141,8 +89,8 @@ bool CookieJar::rejectCookie(const QString &domain, const QNetworkCookie &cookie
 // This feature is now natively in QtWebKit 2.3
 #if QTWEBKIT_TO_2_3
     if (m_blockThirdParty) {
-        bool result = blockThirdParty(cookieDomain, domain);
-        if (result) {
+        bool result = matchDomain(cookieDomain, domain);
+        if (!result) {
 #ifdef COOKIE_DEBUG
             qDebug() << "purged for domain mismatch" << cookie << cookieDomain << domain;
 #endif
@@ -163,12 +111,16 @@ bool CookieJar::rejectCookie(const QString &domain, const QNetworkCookie &cookie
 
 bool CookieJar::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const QUrl &url)
 {
-    QList<QNetworkCookie> newList = cookieList;
+    QList<QNetworkCookie> newList;
 
-    foreach(const QNetworkCookie & cookie, newList) {
-        if (rejectCookie(url.host(), cookie)) {
-            newList.removeOne(cookie);
-            continue;
+    foreach(QNetworkCookie cookie, cookieList) {
+        // If cookie domain is empty, set it to url.host()
+        if (cookie.domain().isEmpty()) {
+            cookie.setDomain(url.host());
+        }
+
+        if (!rejectCookie(url.host(), cookie)) {
+            newList.append(cookie);
         }
     }
 
@@ -177,11 +129,29 @@ bool CookieJar::setCookiesFromUrl(const QList<QNetworkCookie> &cookieList, const
 
 void CookieJar::saveCookies()
 {
-    if (m_deleteOnClose || mApp->isPrivateSession()) {
+    if (mApp->isPrivateSession()) {
         return;
     }
 
-    QList<QNetworkCookie> allCookies = getAllCookies();
+    QList<QNetworkCookie> allCookies;
+
+    if (!m_deleteOnClose) {
+        // If we are deleting cookies on close, let's just save empty cookie list
+        allCookies = getAllCookies();
+    }
+    else {
+        // Do not delete whitelisted cookies
+        QList<QNetworkCookie> cookies = getAllCookies();
+        int count = cookies.count();
+
+        for (int i = 0; i < count; i++) {
+            const QNetworkCookie &cookie = cookies.at(i);
+
+            if (listMatchesDomain(m_whitelist, cookie.domain())) {
+                allCookies.append(cookie);
+            }
+        }
+    }
 
     QFile file(m_activeProfil + "cookies.dat");
     file.open(QIODevice::WriteOnly);
@@ -249,4 +219,41 @@ QList<QNetworkCookie> CookieJar::getAllCookies()
 void CookieJar::setAllCookies(const QList<QNetworkCookie> &cookieList)
 {
     QNetworkCookieJar::setAllCookies(cookieList);
+}
+
+bool CookieJar::matchDomain(QString cookieDomain, QString siteDomain)
+{
+    // According to RFC 6265
+
+    // Remove leading dot
+    if (cookieDomain.startsWith(QLatin1Char('.'))) {
+        cookieDomain = cookieDomain.mid(1);
+    }
+
+    if (siteDomain.startsWith(QLatin1Char('.'))) {
+        siteDomain = siteDomain.mid(1);
+    }
+
+    if (cookieDomain == siteDomain) {
+        return true;
+    }
+
+    if (!siteDomain.endsWith(cookieDomain)) {
+        return false;
+    }
+
+    int index = siteDomain.indexOf(cookieDomain);
+
+    return index > 0 && siteDomain[index - 1] == QLatin1Char('.');
+}
+
+bool CookieJar::listMatchesDomain(const QStringList &list, const QString &cookieDomain)
+{
+    foreach(const QString & d, list) {
+        if (matchDomain(d, cookieDomain)) {
+            return true;
+        }
+    }
+
+    return false;
 }

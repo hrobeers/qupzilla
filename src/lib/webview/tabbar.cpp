@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -87,14 +87,18 @@ void TabBar::loadSettings()
 
 void TabBar::updateVisibilityWithFullscreen(bool visible)
 {
+    // It is needed to save original geometry, otherwise
+    // tabbar will get 3px height in fullscreen once it was hidden
+    QTabBar::setVisible(visible);
+
     if (visible) {
+        setGeometry(m_originalGeometry);
         emit showButtons();
     }
     else {
+        m_originalGeometry = geometry();
         emit hideButtons();
     }
-
-    QTabBar::setVisible(visible);
 }
 
 void TabBar::setVisible(bool visible)
@@ -107,6 +111,7 @@ void TabBar::setVisible(bool visible)
         emit showButtons();
     }
     else {
+        m_originalGeometry = geometry();
         emit hideButtons();
     }
 
@@ -399,6 +404,8 @@ void TabBar::currentTabChanged(int index)
 
     showCloseButton(index);
     hideCloseButton(m_tabWidget->lastTabIndex());
+
+    m_tabWidget->currentTabChanged(index);
 }
 
 void TabBar::bookmarkTab()
@@ -482,6 +489,7 @@ void TabBar::tabRemoved(int index)
 {
     Q_UNUSED(index)
 
+    m_tabWidget->showNavigationBar(p_QupZilla->navigationContainer());
     showCloseButton(currentIndex());
 }
 
@@ -531,7 +539,7 @@ void TabBar::mouseMoveEvent(QMouseEvent* event)
         }
     }
 
-    //Tab Preview
+    // Tab Preview
 
     const int tab = tabAt(event->pos());
 
@@ -584,7 +592,8 @@ bool TabBar::event(QEvent* event)
 
     case QEvent::ToolTip:
         if (m_showTabPreviews) {
-            if (!m_tabPreview->isVisible()) {
+            QHelpEvent* ev = static_cast<QHelpEvent*>(event);
+            if (tabAt(ev->pos()) != -1 && !m_tabPreview->isVisible()) {
                 showTabPreview();
             }
             return true;

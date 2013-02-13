@@ -22,7 +22,6 @@
 #include "qztools.h"
 #include "iconprovider.h"
 #include "history.h"
-#include "autofill.h"
 #include "pluginproxy.h"
 #include "downloadmanager.h"
 #include "sourceviewer.h"
@@ -33,6 +32,10 @@
 #include "settings.h"
 #include "qzsettings.h"
 #include "enhancedmenu.h"
+
+#ifdef USE_HUNSPELL
+#include "qtwebkit/spellcheck/speller.h"
+#endif
 
 #include <QDir>
 #include <QTimer>
@@ -56,6 +59,8 @@ WebView::WebView(QWidget* parent)
     , m_actionsInitialized(false)
     , m_disableTouchMocking(false)
     , m_isReloading(false)
+    , m_hasRss(false)
+    , m_rssChecked(false)
 {
     connect(this, SIGNAL(loadStarted()), this, SLOT(slotLoadStarted()));
     connect(this, SIGNAL(loadProgress(int)), this, SLOT(slotLoadProgress(int)));
@@ -79,6 +84,10 @@ QIcon WebView::icon() const
 
     if (url().scheme() == QLatin1String("file")) {
         return qIconProvider->standardIcon(QStyle::SP_DriveHDIcon);
+    }
+
+    if (url().scheme() == QLatin1String("ftp")) {
+        return qIconProvider->standardIcon(QStyle::SP_ComputerIcon);
     }
 
     if (!QWebView::icon().isNull()) {
@@ -164,13 +173,12 @@ void WebView::load(const QNetworkRequest &request, QNetworkAccessManager::Operat
 
     if (reqUrl.scheme() == QLatin1String("javascript")) {
         // Getting scriptSource from PercentEncoding to properly load bookmarklets
+        // First check if url is percent encoded (let's just look for space)
         QString scriptSource;
-        if (reqUrl.path().contains(' '))
-        {
-            scriptSource = reqUrl.toString().mid(11).toUtf8();
+        if (reqUrl.path().trimmed().contains(' ')) {
+            scriptSource = reqUrl.toString().mid(11);
         }
-        else
-        {
+        else {
             scriptSource = QUrl::fromPercentEncoding(reqUrl.toString().mid(11).toUtf8());
         }
         page()->mainFrame()->evaluateJavaScript(scriptSource);
@@ -210,6 +218,11 @@ void WebView::fakeLoadingProgress(int progress)
 {
     emit loadStarted();
     emit loadProgress(progress);
+}
+
+bool WebView::hasRss() const
+{
+    return m_hasRss;
 }
 
 bool WebView::isUrlValid(const QUrl &url)
@@ -353,11 +366,18 @@ void WebView::slotLoadStarted()
         m_actionStop->setEnabled(true);
         m_actionReload->setEnabled(false);
     }
+
+    m_rssChecked = false;
+    emit rssChanged(false);
 }
 
 void WebView::slotLoadProgress(int progress)
 {
     m_progress = progress;
+
+    if (m_progress > 60) {
+        checkRss();
+    }
 }
 
 void WebView::slotLoadFinished()
@@ -374,8 +394,6 @@ void WebView::slotLoadFinished()
         mApp->history()->addHistoryEntry(this);
     }
 
-    mApp->autoFill()->completePage(page());
-
     m_isReloading = false;
     m_lastUrl = url();
 }
@@ -389,6 +407,20 @@ void WebView::frameStateChanged()
 void WebView::emitChangedUrl()
 {
     emit urlChanged(url());
+}
+
+void WebView::checkRss()
+{
+    if (m_rssChecked) {
+        return;
+    }
+
+    m_rssChecked = true;
+    QWebFrame* frame = page()->mainFrame();
+    const QWebElementCollection &links = frame->findAllElements("link[type=\"application/rss+xml\"]");
+
+    m_hasRss = links.count() != 0;
+    emit rssChanged(m_hasRss);
 }
 
 void WebView::slotIconChanged()
@@ -750,6 +782,16 @@ void WebView::createContextMenu(QMenu* menu, const QWebHitTestResult &hitTest, c
         m_actionStop->setEnabled(isLoading());
     }
 
+    int spellCheckActionCount = 0;
+
+#ifdef USE_HUNSPELL
+    // Show spellcheck menu as the first
+    if (hitTest.isContentEditable() && !hitTest.isContentSelected()) {
+        mApp->speller()->populateContextMenu(menu, hitTest);
+        spellCheckActionCount = menu->actions().count();
+    }
+#endif
+
     if (!hitTest.linkUrl().isEmpty() && hitTest.linkUrl().scheme() != QLatin1String("javascript")) {
         createLinkContextMenu(menu, hitTest);
     }
@@ -763,40 +805,44 @@ void WebView::createContextMenu(QMenu* menu, const QWebHitTestResult &hitTest, c
     }
 
     if (hitTest.isContentEditable()) {
-        if (menu->isEmpty()) {
+        if (menu->actions().count() == spellCheckActionCount) {
             QMenu* pageMenu = page()->createStandardContextMenu();
-
-            int i = 0;
-            foreach(QAction * act, pageMenu->actions()) {
-                if (act->isSeparator()) {
-                    menu->addSeparator();
-                    continue;
-                }
-
-                // Hiding double Direction + Fonts menu (bug in QtWebKit 2.2)
-                if (i <= 1 && act->menu()) {
-                    if (act->menu()->actions().contains(pageAction(QWebPage::SetTextDirectionDefault)) ||
-                            act->menu()->actions().contains(pageAction(QWebPage::ToggleBold))) {
-                        act->setVisible(false);
+            // Apparently createStandardContextMenu() can return null pointer
+            if (pageMenu) {
+                int i = 0;
+                foreach(QAction * act, pageMenu->actions()) {
+                    if (act->isSeparator()) {
+                        menu->addSeparator();
+                        continue;
                     }
+
+                    // Hiding double Direction + Fonts menu (bug in QtWebKit 2.2)
+                    if (i <= 1 && act->menu()) {
+                        if (act->menu()->actions().contains(pageAction(QWebPage::SetTextDirectionDefault)) ||
+                                act->menu()->actions().contains(pageAction(QWebPage::ToggleBold))) {
+                            act->setVisible(false);
+                        }
+                    }
+
+                    menu->addAction(act);
+
+                    ++i;
                 }
 
-                menu->addAction(act);
+                if (menu->actions().last() == pageAction(QWebPage::InspectElement)) {
+                    // We have own Inspect Element action
+                    menu->actions().last()->setVisible(false);
+                }
 
-                ++i;
+                delete pageMenu;
             }
-
-            if (menu->actions().last() == pageAction(QWebPage::InspectElement)) {
-                // We have own Inspect Element action
-                menu->actions().last()->setVisible(false);
-            }
-
-            delete pageMenu;
         }
 
         if (hitTest.element().tagName().toLower() == QLatin1String("input")) {
             checkForForm(menu, hitTest.element());
         }
+
+        createSpellCheckContextMenu(menu);
     }
 
     if (!selectedText().isEmpty()) {
@@ -936,7 +982,7 @@ void WebView::createSelectedTextContextMenu(QMenu* menu, const QWebHitTestResult
     menu->addAction(QIcon::fromTheme("mail-message-new"), tr("Send text..."), this, SLOT(sendLinkByMail()))->setData(selectedText);
     menu->addSeparator();
 
-    QString langCode = mApp->currentLanguage().left(2);
+    QString langCode = mApp->currentLanguageFile().left(2);
     QUrl googleTranslateUrl = QUrl(QString("http://translate.google.com/#auto|%1|%2").arg(langCode, selectedText));
     Action* gtwact = new Action(QIcon(":icons/sites/translate.png"), tr("Google Translate"));
     gtwact->setData(googleTranslateUrl);
@@ -982,7 +1028,7 @@ void WebView::createSelectedTextContextMenu(QMenu* menu, const QWebHitTestResult
     SearchEnginesManager* searchManager = mApp->searchEnginesManager();
     foreach(const SearchEngine & en, searchManager->allEngines()) {
         Action* act = new Action(en.icon, en.name);
-        act->setData(qVariantFromValue(en));
+        act->setData(QVariant::fromValue(en));
 
         connect(act, SIGNAL(triggered()), this, SLOT(searchSelectedText()));
         connect(act, SIGNAL(middleClicked()), this, SLOT(searchSelectedTextInBackgroundTab()));
@@ -1011,6 +1057,25 @@ void WebView::createMediaContextMenu(QMenu* menu, const QWebHitTestResult &hitTe
     menu->addAction(QIcon::fromTheme("edit-copy"), tr("&Copy Media Address"), this, SLOT(copyLinkToClipboard()))->setData(videoUrl);
     menu->addAction(QIcon::fromTheme("mail-message-new"), tr("&Send Media Address"), this, SLOT(sendLinkByMail()))->setData(videoUrl);
     menu->addAction(QIcon::fromTheme("document-save"), tr("Save Media To &Disk"), this, SLOT(downloadUrlToDisk()))->setData(videoUrl);
+}
+
+void WebView::createSpellCheckContextMenu(QMenu* menu)
+{
+    Q_UNUSED(menu)
+#ifdef USE_HUNSPELL
+    menu->addSeparator();
+
+    QAction* act = menu->addAction(tr("Check &Spelling"), mApp->speller(), SLOT(toggleEnableSpellChecking()));
+    act->setCheckable(true);
+    act->setChecked(mApp->speller()->isEnabled());
+
+    if (mApp->speller()->isEnabled()) {
+        QMenu* men = menu->addMenu(tr("Languages"));
+        connect(men, SIGNAL(aboutToShow()), mApp->speller(), SLOT(populateLanguagesMenu()));
+    }
+
+    menu->addSeparator();
+#endif
 }
 
 void WebView::pauseMedia()

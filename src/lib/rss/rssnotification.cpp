@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -24,13 +24,14 @@
 #include "rssmanager.h"
 #include "settings.h"
 #include "webview.h"
+#include "qztools.h"
 
 #include <QMessageBox>
 #include <QClipboard>
 #include <QProcess>
 #include <QFile>
 
-bool startExternalProcess(const QString &program, const QStringList &arguments)
+static bool startExternalProcess(const QString &program, const QStringList &arguments)
 {
     if (!QProcess::startDetached(program, arguments)) {
         QString info = "<ul><li><b>" + RSSNotification::tr("Executable: ") + "</b>" + program + "</li><li><b>" + RSSNotification::tr("Arguments: ") + "</b>" + arguments.join(" ") + "</li></ul>";
@@ -62,14 +63,16 @@ RSSNotification::RSSNotification(const QString &title, const QUrl &url, WebView*
               << RssApp("Yahoo!", "http://add.my.yahoo.com/rss?url=", QIcon(":/icons/sites/yahoo.png"));
 
 #ifdef QZ_WS_X11
-    // TODO: Not really clever solution.
-    // It should look in PATH
-    if (QFile("/usr/bin/akregator").exists()) {
-        m_rssApps << RssApp("Akregator", "/usr/bin/akregator -a ", QIcon(":/icons/sites/akregator.png"), DesktopApplication);
+    const QString &akregatorBin = QzTools::resolveFromPath("akregator");
+    const QString &lifereaBin = QzTools::resolveFromPath("liferea");
+    const QString &lifereaAddFeedBin = QzTools::resolveFromPath("liferea-add-feed");
+
+    if (!akregatorBin.isEmpty()) {
+        m_rssApps << RssApp("Akregator", akregatorBin + " -a ", QIcon(":/icons/sites/akregator.png"), DesktopApplication);
     }
 
-    if (QFile("/usr/bin/liferea").exists() && QFile("/usr/bin/liferea-add-feed").exists()) {
-        m_rssApps << RssApp("Liferea", "/usr/bin/liferea-add-feed ", QIcon(":/icons/sites/liferea.png"), DesktopApplication);
+    if (!lifereaBin.isEmpty() && !lifereaAddFeedBin.isEmpty()) {
+        m_rssApps << RssApp("Liferea", lifereaAddFeedBin + " ", QIcon(":/icons/sites/liferea.png"), DesktopApplication);
     }
 #endif
 
@@ -104,7 +107,7 @@ void RSSNotification::addRss()
 
     switch (ui->comboBox->itemData(index).toInt()) {
     case WebApplication: {
-        const RssApp &app = m_rssApps.at(index);
+        const RssApp app = m_rssApps.at(index);
         const QUrl &url = QUrl::fromEncoded(QString(app.address + QUrl::toPercentEncoding(m_url.toString())).toLatin1());
 
         m_view->openUrlInNewTab(url, Qz::NT_SelectedTab);
@@ -113,7 +116,7 @@ void RSSNotification::addRss()
     }
 
     case DesktopApplication: {
-        const RssApp &app = m_rssApps.at(index);
+        const RssApp app = m_rssApps.at(index);
         if (app.title == QLatin1String("Akregator")) {
             success = startExternalProcess("/usr/bin/akregator", QStringList() << "-a" << m_url.toEncoded());
         }

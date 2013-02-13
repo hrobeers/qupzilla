@@ -50,13 +50,18 @@
 #include "useragentmanager.h"
 #include "restoremanager.h"
 #include "proxystyle.h"
+#include "checkboxdialog.h"
 #include "registerqappassociation.h"
 #include "html5permissions/html5permissionsmanager.h"
 
+#ifdef USE_HUNSPELL
+#include "qtwebkit/spellcheck/speller.h"
+#endif
+
 #ifdef Q_OS_MAC
+#include "macmenureceiver.h"
 #include <QFileOpenEvent>
 #endif
-#include <QWebSecurityOrigin>
 #include <QNetworkDiskCache>
 #include <QDesktopServices>
 #include <QTranslator>
@@ -68,6 +73,10 @@
 
 #if defined(PORTABLE_BUILD) && !defined(NO_SYSTEM_DATAPATH)
 #define NO_SYSTEM_DATAPATH
+#endif
+
+#if QT_VERSION < 0x050000
+#include "qwebkitversion.h"
 #endif
 
 MainApplication::MainApplication(int &argc, char** argv)
@@ -88,6 +97,9 @@ MainApplication::MainApplication(int &argc, char** argv)
     , m_restoreManager(0)
     , m_proxyStyle(0)
     , m_html5permissions(0)
+#ifdef USE_HUNSPELL
+    , m_speller(0)
+#endif
     , m_dbWriter(new DatabaseWriter(this))
     , m_uaManager(new UserAgentManager)
     , m_isPrivateSession(false)
@@ -96,7 +108,12 @@ MainApplication::MainApplication(int &argc, char** argv)
     , m_isRestoring(false)
     , m_startingAfterCrash(false)
     , m_databaseConnected(false)
+#ifdef Q_OS_WIN
     , m_registerQAppAssociation(0)
+#endif
+#ifdef Q_OS_MAC
+    , m_macMenuReceiver(0)
+#endif
 {
 #if defined(QZ_WS_X11) && !defined(NO_SYSTEM_DATAPATH)
     DATADIR = USE_DATADIR;
@@ -211,6 +228,7 @@ MainApplication::MainApplication(int &argc, char** argv)
     setApplicationVersion(QupZilla::VERSION);
     setOrganizationDomain("qupzilla");
     QDesktopServices::setUrlHandler("http", this, "addNewTab");
+    QDesktopServices::setUrlHandler("ftp", this, "addNewTab");
 
     checkSettingsDir();
 
@@ -412,9 +430,6 @@ void MainApplication::loadSettings()
     m_websettings->setWebGraphic(QWebSettings::DefaultFrameIconGraphic, qIconProvider->emptyWebIcon().pixmap(16, 16));
     m_websettings->setWebGraphic(QWebSettings::MissingImageGraphic, QPixmap());
 
-    // Allows to load files from qrc: scheme in qupzilla: pages
-    QWebSecurityOrigin::addLocalScheme("qupzilla");
-
     if (m_isPrivateSession) {
         m_websettings->setAttribute(QWebSettings::PrivateBrowsingEnabled, true);
         history()->setSaving(false);
@@ -492,6 +507,52 @@ QList<QupZilla*> MainApplication::mainWindows()
     return list;
 }
 
+bool MainApplication::isClosing() const
+{
+    return m_isClosing;
+}
+
+bool MainApplication::isRestoring() const
+{
+    return m_isRestoring;
+}
+
+bool MainApplication::isPrivateSession() const
+{
+    return m_isPrivateSession;
+}
+
+bool MainApplication::isStartingAfterCrash() const
+{
+    return m_startingAfterCrash;
+}
+
+int MainApplication::windowCount() const
+{
+    return m_mainWindows.count();
+}
+
+QString MainApplication::currentLanguageFile() const
+{
+    return m_activeLanguage;
+}
+
+QString MainApplication::currentLanguage() const
+{
+    QString lang = m_activeLanguage;
+
+    if (lang.isEmpty()) {
+        return "en_US";
+    }
+
+    return lang.left(lang.length() - 3);
+}
+
+QString MainApplication::currentProfilePath() const
+{
+    return m_activeProfil;
+}
+
 void MainApplication::sendMessages(Qz::AppMessageType mes, bool state)
 {
     emit message(mes, state);
@@ -556,7 +617,7 @@ void MainApplication::addNewTab(const QUrl &url)
 
 QupZilla* MainApplication::makeNewWindow(Qz::BrowserWindow type, const QUrl &startUrl)
 {
-    if (m_mainWindows.count() == 0) {
+    if (m_mainWindows.count() == 0 && type != Qz::BW_MacFirstWindow) {
         type = Qz::BW_FirstAppWindow;
     }
 
@@ -567,6 +628,14 @@ QupZilla* MainApplication::makeNewWindow(Qz::BrowserWindow type, const QUrl &sta
 }
 
 #ifdef Q_OS_MAC
+MacMenuReceiver* MainApplication::macMenuReceiver()
+{
+    if (!m_macMenuReceiver) {
+        m_macMenuReceiver = new MacMenuReceiver(this);
+    }
+    return m_macMenuReceiver;
+}
+
 bool MainApplication::event(QEvent* e)
 {
     switch (e->type()) {
@@ -615,7 +684,11 @@ void MainApplication::connectDatabase()
 void MainApplication::translateApp()
 {
     Settings settings;
-    const QString &file = settings.value("Language/language", QLocale::system().name()).toString();
+    QString file = settings.value("Language/language", QLocale::system().name()).toString();
+
+    if (!file.isEmpty() && !file.endsWith(QLatin1String(".qm"))) {
+        file.append(".qm");
+    }
 
     QTranslator* app = new QTranslator(this);
     app->load(file, TRANSLATIONSDIR);
@@ -667,14 +740,10 @@ void MainApplication::saveSettings()
     settings.endGroup();
 
     settings.beginGroup("Web-Browser-Settings");
-    bool deleteCookies = settings.value("deleteCookiesOnClose", false).toBool();
     bool deleteHistory = settings.value("deleteHistoryOnClose", false).toBool();
     bool deleteHtml5Storage = settings.value("deleteHTML5StorageOnClose", false).toBool();
     settings.endGroup();
 
-    if (deleteCookies) {
-        m_cookiejar->clearCookies();
-    }
     if (deleteHistory) {
         m_historymodel->clearHistory();
     }
@@ -688,6 +757,7 @@ void MainApplication::saveSettings()
     qIconProvider->saveIconsToDatabase();
     clearTempPath();
 
+    qzSettings->saveSettings();
     AdBlockManager::instance()->save();
     QFile::remove(currentProfilePath() + "WebpageIcons.db");
     Settings::syncSettings();
@@ -790,8 +860,13 @@ SearchEnginesManager* MainApplication::searchEnginesManager()
 QNetworkDiskCache* MainApplication::networkCache()
 {
     if (!m_networkCache) {
+        Settings settings;
+        const QString &basePath = settings.value("Web-Browser-Settings/CachePath",
+                                  QString("%1networkcache/").arg(m_activeProfil)).toString();
+
+        const QString &cachePath = basePath + "/" + qWebKitVersion() + "/";
         m_networkCache = new QNetworkDiskCache(this);
-        m_networkCache->setCacheDirectory(m_activeProfil + "/networkcache");
+        m_networkCache->setCacheDirectory(cachePath);
     }
 
     return m_networkCache;
@@ -812,6 +887,16 @@ HTML5PermissionsManager* MainApplication::html5permissions()
     }
     return m_html5permissions;
 }
+
+#ifdef USE_HUNSPELL
+Speller* MainApplication::speller()
+{
+    if (!m_speller) {
+        m_speller = new Speller(this);
+    }
+    return m_speller;
+}
+#endif
 
 void MainApplication::startPrivateBrowsing()
 {
@@ -839,22 +924,29 @@ void MainApplication::reloadUserStyleSheet()
 
 bool MainApplication::checkDefaultWebBrowser()
 {
+#ifdef Q_OS_WIN
     bool showAgain = true;
     if (!associationManager()->isDefaultForAllCapabilities()) {
-        CheckMessageBox notDefaultDialog(&showAgain, getWindow());
-        notDefaultDialog.setWindowTitle(tr("Default Browser"));
-        notDefaultDialog.setMessage(tr("QupZilla is not currently your default browser. Would you like to make it your default browser?"));
-        notDefaultDialog.setPixmap(style()->standardIcon(QStyle::SP_MessageBoxWarning).pixmap(32, 32));
-        notDefaultDialog.setShowAgainText(tr("Always perform this check when starting QupZilla."));
+        CheckBoxDialog dialog(QDialogButtonBox::Yes | QDialogButtonBox::No);
+        dialog.setText(tr("QupZilla is not currently your default browser. Would you like to make it your default browser?"));
+        dialog.setCheckBoxText(tr("Always perform this check when starting QupZilla."));
+        dialog.setWindowTitle(tr("Default Browser"));
+        dialog.setIcon(qIconProvider->standardIcon(QStyle::SP_MessageBoxWarning));
 
-        if (notDefaultDialog.exec() == QDialog::Accepted) {
+        if (dialog.exec() == QDialog::Accepted) {
             associationManager()->registerAllAssociation();
         }
+
+        showAgain = dialog.isChecked();
     }
 
     return showAgain;
+#else
+    return false;
+#endif
 }
 
+#ifdef Q_OS_WIN
 RegisterQAppAssociation* MainApplication::associationManager()
 {
     if (!m_registerQAppAssociation) {
@@ -866,16 +958,15 @@ RegisterQAppAssociation* MainApplication::associationManager()
         m_registerQAppAssociation->addCapability(".htm", "QupZilla.HTM", "HTM File", fileIconPath, RegisterQAppAssociation::FileAssociation);
         m_registerQAppAssociation->addCapability("http", "QupZilla.HTTP", "URL:HyperText Transfer Protocol", appIconPath, RegisterQAppAssociation::UrlAssociation);
         m_registerQAppAssociation->addCapability("https", "QupZilla.HTTPS", "URL:HyperText Transfer Protocol with Privacy", appIconPath, RegisterQAppAssociation::UrlAssociation);
+        m_registerQAppAssociation->addCapability("ftp", "QupZilla.FTP", "URL:File Transfer Protocol", appIconPath, RegisterQAppAssociation::UrlAssociation);
     }
     return m_registerQAppAssociation;
 }
+#endif
 
 QUrl MainApplication::userStyleSheet(const QString &filePath) const
 {
-    // Set default white background for all sites
-    // Fixes issue with dark themes when sites don't set background
-    QString userStyle = "html{background-color:white;}";
-    userStyle += AdBlockManager::instance()->elementHidingRules() + "{ display:none !important;}";
+    QString userStyle = AdBlockManager::instance()->elementHidingRules() + "{ display:none !important;}";
 
     QFile file(filePath);
     if (!filePath.isEmpty() && file.open(QFile::ReadOnly)) {

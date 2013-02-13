@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QSettings>
+#include <QWebSecurityOrigin>
 
 static QString authorString(const char* name, const QString &mail)
 {
@@ -78,6 +79,7 @@ QupZillaSchemeReply::QupZillaSchemeReply(const QNetworkRequest &req, QObject* pa
 
 void QupZillaSchemeReply::loadPage()
 {
+    QWebSecurityOrigin::addLocalScheme("qupzilla");
     QTextStream stream(&m_buffer);
     stream.setCodec("UTF-8");
 
@@ -112,6 +114,7 @@ void QupZillaSchemeReply::loadPage()
 
     emit readyRead();
     emit finished();
+    QWebSecurityOrigin::removeLocalScheme("qupzilla");
 }
 
 void QupZillaSchemeReply::delayedFinish()
@@ -150,9 +153,19 @@ QString QupZillaSchemeReply::reportbugPage()
     bPage.replace(QLatin1String("%TYPE%"), tr("Issue type"));
     bPage.replace(QLatin1String("%DESCRIPTION%"), tr("Issue description"));
     bPage.replace(QLatin1String("%SEND%"), tr("Send"));
-    bPage.replace(QLatin1String("%E-MAIL-OPTIONAL%"), tr("E-mail is optional<br/><b>Note: </b>Please read how to make a bug report <a href=%1>here</a> first.").arg("https://github.com/QupZilla/qupzilla/wiki/Bug-Reports target=_blank"));
+    bPage.replace(QLatin1String("%E-MAIL-OPTIONAL%"), tr("E-mail is optional<br/><b>Note: </b>Please read how to make a "
+                  "bug report <a href=%1>here</a> first.").arg("https://github.com/QupZilla/qupzilla/wiki/Bug-Reports target=_blank"));
     bPage.replace(QLatin1String("%FIELDS-ARE-REQUIRED%"), tr("Please fill out all required fields!"));
-    bPage = QzTools::applyDirectionToPage(bPage);
+
+    bPage.replace(QLatin1String("%INFO_OS%"), QzTools::buildSystem());
+    bPage.replace(QLatin1String("%INFO_APP%"), QupZilla::VERSION
+#ifdef GIT_REVISION
+                  + " (" + GIT_REVISION + ")"
+#endif
+                 );
+    bPage.replace(QLatin1String("%INFO_QT%"), QString("%1 (built with %2)").arg(qVersion(), QT_VERSION_STR));
+    bPage.replace(QLatin1String("%INFO_WEBKIT%"), QupZilla::WEBKITVERSION),
+                  bPage = QzTools::applyDirectionToPage(bPage);
 
     return bPage;
 }
@@ -387,7 +400,7 @@ QString QupZillaSchemeReply::configPage()
 #ifdef QUPZILLA_DEBUG_BUILD
         debugBuild = tr("<b>Enabled</b>");
 #endif
-#ifdef USE_WEBGL
+#if defined (USE_WEBGL) || (QTWEBKIT_FROM_2_3 && defined(QZ_WS_X11))
         webGLEnabled = tr("<b>Enabled</b>");
 #endif
 #if defined(Q_OS_WIN) && defined(W7API)

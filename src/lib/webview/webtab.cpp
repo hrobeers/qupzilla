@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -24,12 +24,14 @@
 #include "locationbar.h"
 #include "qztools.h"
 #include "qzsettings.h"
+#include "mainapplication.h"
 
 #include <QVBoxLayout>
 #include <QWebHistory>
 #include <QWebFrame>
 #include <QLabel>
 #include <QStyle>
+#include <QTimer>
 
 WebTab::SavedTab::SavedTab(WebTab* webTab)
 {
@@ -70,21 +72,27 @@ QDataStream &operator >>(QDataStream &stream, WebTab::SavedTab &tab)
 WebTab::WebTab(QupZilla* mainClass, LocationBar* locationBar)
     : QWidget()
     , p_QupZilla(mainClass)
+    , m_navigationContainer(0)
     , m_locationBar(locationBar)
     , m_pinned(false)
     , m_inspectorVisible(false)
 {
+    setObjectName("webtab");
+
+    // This fixes background of pages with dark themes
+    setStyleSheet("#webtab {background-color:white;}");
+
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(0);
 
     m_view = new TabbedWebView(p_QupZilla, this);
+    m_view->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     WebPage* page = new WebPage(p_QupZilla);
     m_view->setWebPage(page);
     m_layout->addWidget(m_view);
 
     setLayout(m_layout);
-    setAutoFillBackground(true); // We don't want this transparent
 
     connect(m_view, SIGNAL(showNotification(QWidget*)), this, SLOT(showNotification(QWidget*)));
     connect(m_view, SIGNAL(iconChanged()), m_locationBar.data(), SLOT(siteIconChanged()));
@@ -104,9 +112,13 @@ TabbedWebView* WebTab::view() const
 void WebTab::setCurrentTab()
 {
     if (!isRestored()) {
-        p_restoreTab(m_savedTab);
-
-        m_savedTab.clear();
+        // When session is being restored, restore the tab immediately
+        if (mApp->isRestoring()) {
+            slotRestore();
+        }
+        else {
+            QTimer::singleShot(0, this, SLOT(slotRestore()));
+        }
     }
 }
 
@@ -251,8 +263,16 @@ void WebTab::p_restoreTab(const WebTab::SavedTab &tab)
 
 QPixmap WebTab::renderTabPreview()
 {
+    TabbedWebView* currentWebView = p_QupZilla->weView();
     WebPage* page = m_view->page();
-    QSize oldSize = page->viewportSize();
+    const QSize oldSize = page->viewportSize();
+    const QPoint originalScrollPosition = page->mainFrame()->scrollPosition();
+
+    // Hack to ensure rendering the same preview before and after the page was shown for the first time
+    // This can occur eg. with opening background tabs
+    if (currentWebView) {
+        page->setViewportSize(currentWebView->size());
+    }
 
     const int previewWidth = 230;
     const int previewHeight = 150;
@@ -272,23 +292,46 @@ QPixmap WebTab::renderTabPreview()
     p.end();
 
     page->setViewportSize(oldSize);
+    // Restore also scrollbar positions, to prevent messing scrolling to anchor links
+    page->mainFrame()->setScrollBarValue(Qt::Vertical, originalScrollPosition.y());
+    page->mainFrame()->setScrollBarValue(Qt::Horizontal, originalScrollPosition.x());
 
     return pageImage.scaled(previewWidth, previewHeight, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 
 void WebTab::showNotification(QWidget* notif)
 {
-    if (m_layout->count() > 1) {
+    const int notifPos = m_navigationContainer ? 2 : 1;
+
+    if (m_layout->count() > notifPos) {
         delete m_layout->itemAt(0)->widget();
     }
 
-    m_layout->insertWidget(0, notif);
+    m_layout->insertWidget(notifPos - 1, notif);
     notif->show();
+}
+
+void WebTab::slotRestore()
+{
+    p_restoreTab(m_savedTab);
+    m_savedTab.clear();
 }
 
 int WebTab::tabIndex() const
 {
     return m_view->tabIndex();
+}
+
+void WebTab::showNavigationBar(QWidget* bar)
+{
+    if (bar) {
+        m_navigationContainer = bar;
+        m_layout->insertWidget(0, m_navigationContainer);
+
+        // Needed to prevent flickering when closing tabs
+        m_navigationContainer->setUpdatesEnabled(true);
+        m_navigationContainer->show();
+    }
 }
 
 void WebTab::pinTab(int index)
@@ -322,5 +365,16 @@ void WebTab::disconnectObjects()
 
 WebTab::~WebTab()
 {
+    if (m_navigationContainer) {
+        m_layout->removeWidget(m_navigationContainer);
+
+        // Needed to prevent flickering when closing tabs
+        m_navigationContainer->setUpdatesEnabled(false);
+        m_navigationContainer->hide();
+
+        // Needed to prevent deleting m_navigationContainer in ~QWidget
+        m_navigationContainer->setParent(p_QupZilla);
+    }
+
     delete m_locationBar.data();
 }

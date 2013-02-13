@@ -31,3 +31,8 @@ tests/modeltest
 *_manifest.*
 *.embed.manifest
 bin/autotests
+.clang_complete
+.tx/
+bin/qupzilla.app
+.DS_Store
+*.dylib

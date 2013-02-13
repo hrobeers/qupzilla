@@ -21,6 +21,7 @@
 #include "networkmanagerproxy.h"
 #include "mainapplication.h"
 #include "webpage.h"
+#include "tabbedwebview.h"
 #include "pluginproxy.h"
 #include "adblockmanager.h"
 #include "networkproxyfactory.h"
@@ -32,6 +33,7 @@
 #include "schemehandlers/adblockschemehandler.h"
 #include "schemehandlers/qupzillaschemehandler.h"
 #include "schemehandlers/fileschemehandler.h"
+#include "schemehandlers/ftpschemehandler.h"
 
 #include <QFormLayout>
 #include <QLabel>
@@ -76,6 +78,7 @@ NetworkManager::NetworkManager(QupZilla* mainClass, QObject* parent)
     m_schemeHandlers["qupzilla"] = new QupZillaSchemeHandler();
     m_schemeHandlers["abp"] = new AdBlockSchemeHandler();
     m_schemeHandlers["file"] = new FileSchemeHandler();
+    m_schemeHandlers["ftp"] = new FtpSchemeHandler();
 
     m_proxyFactory = new NetworkProxyFactory();
     setProxyFactory(m_proxyFactory);
@@ -85,14 +88,14 @@ NetworkManager::NetworkManager(QupZilla* mainClass, QObject* parent)
 void NetworkManager::loadSettings()
 {
     Settings settings;
-    settings.beginGroup("Web-Browser-Settings");
 
-    if (settings.value("AllowLocalCache", true).toBool() && !mApp->isPrivateSession()) {
+    if (settings.value("Web-Browser-Settings/AllowLocalCache", true).toBool() && !mApp->isPrivateSession()) {
         QNetworkDiskCache* cache = mApp->networkCache();
         cache->setMaximumCacheSize(settings.value("MaximumCacheSize", 50).toInt() * 1024 * 1024); //MegaBytes
         setCache(cache);
     }
 
+    settings.beginGroup("Web-Browser-Settings");
     m_doNotTrack = settings.value("DoNotTrack", false).toBool();
     m_sendReferer = settings.value("SendReferer", true).toBool();
     settings.endGroup();
@@ -250,7 +253,7 @@ void NetworkManager::sslError(QNetworkReply* reply, QList<QSslError> errors)
 void NetworkManager::authentication(QNetworkReply* reply, QAuthenticator* auth)
 {
     QDialog* dialog = new QDialog(p_QupZilla);
-    dialog->setWindowTitle(tr("Authorization required"));
+    dialog->setWindowTitle(tr("Authorisation required"));
 
     QFormLayout* formLa = new QFormLayout(dialog);
 
@@ -281,15 +284,37 @@ void NetworkManager::authentication(QNetworkReply* reply, QAuthenticator* auth)
     formLa->addRow(save);
 
     formLa->addWidget(box);
-    AutoFill* fill = mApp->autoFill();
-    if (fill->isStored(reply->url())) {
-        save->setChecked(true);
-        user->setText(fill->getUsername(reply->url()));
-        pass->setText(fill->getPassword(reply->url()));
-    }
-    emit wantsFocus(reply->url());
+    bool shouldUpdateEntry = false;
 
-    //Do not save when private browsing is enabled
+    AutoFill* fill = mApp->autoFill();
+    QString storedUser;
+    QString storedPassword;
+    if (fill->isStored(reply->url())) {
+        const AutoFillData &data = fill->getFirstFormData(reply->url());
+
+        if (data.isValid()) {
+            save->setChecked(true);
+            shouldUpdateEntry = true;
+            storedUser = data.username;
+            storedPassword = data.password;
+            user->setText(storedUser);
+            pass->setText(storedPassword);
+        }
+    }
+
+    // Try to set the originating WebTab as a current tab
+    QWebFrame* frame = qobject_cast<QWebFrame*>(reply->request().originatingObject());
+    if (frame) {
+        WebPage* page = qobject_cast<WebPage*>(frame->page());
+        if (page) {
+            TabbedWebView* view = qobject_cast<TabbedWebView*>(page->view());
+            if (view) {
+                view->setAsCurrentTab();
+            }
+        }
+    }
+
+    // Do not save when private browsing is enabled
     if (mApp->isPrivateSession()) {
         save->setVisible(false);
     }
@@ -302,14 +327,107 @@ void NetworkManager::authentication(QNetworkReply* reply, QAuthenticator* auth)
     auth->setPassword(pass->text());
 
     if (save->isChecked()) {
-        fill->addEntry(reply->url(), user->text(), pass->text());
+        if (shouldUpdateEntry) {
+            if (storedUser != user->text() || storedPassword != pass->text()) {
+                fill->updateEntry(reply->url(), user->text(), pass->text());
+            }
+        }
+        else {
+            fill->addEntry(reply->url(), user->text(), pass->text());
+        }
+    }
+}
+
+void NetworkManager::ftpAuthentication(const QUrl &url, QAuthenticator* auth)
+{
+    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
+    FtpDownloader* ftp = 0;
+    if (!reply) {
+        ftp = qobject_cast<FtpDownloader*>(sender());
+    }
+
+    if (!auth) {
+        auth = FTP_AUTHENTICATOR(url);
+    }
+
+    QString lastUser = auth->user();
+    QString lastPass = auth->password();
+
+    if (lastUser.isEmpty() && lastPass.isEmpty()) {
+        // The auth is empty but url contains user's info
+        lastUser = url.userName();
+        lastPass = url.password();
+    }
+
+    QDialog* dialog = new QDialog(mApp->getWindow());
+    dialog->setWindowTitle(tr("FTP authorisation required"));
+
+    QFormLayout* formLa = new QFormLayout(dialog);
+
+    QLabel* label = new QLabel(dialog);
+    QLabel* userLab = new QLabel(dialog);
+    QLabel* passLab = new QLabel(dialog);
+    userLab->setText(tr("Username: "));
+    passLab->setText(tr("Password: "));
+
+    QCheckBox* anonymousLogin = new QCheckBox(dialog);
+    QLineEdit* user = new QLineEdit(lastUser, dialog);
+    QLineEdit* pass = new QLineEdit(lastPass, dialog);
+    anonymousLogin->setText(tr("Login anonymously"));
+    connect(anonymousLogin, SIGNAL(toggled(bool)), user, SLOT(setDisabled(bool)));
+    connect(anonymousLogin, SIGNAL(toggled(bool)), pass, SLOT(setDisabled(bool)));
+    anonymousLogin->setChecked(lastUser.isEmpty() && lastPass.isEmpty());
+    pass->setEchoMode(QLineEdit::Password);
+
+    QDialogButtonBox* box = new QDialogButtonBox(dialog);
+    box->addButton(QDialogButtonBox::Ok);
+    box->addButton(QDialogButtonBox::Cancel);
+    connect(box, SIGNAL(rejected()), dialog, SLOT(reject()));
+    connect(box, SIGNAL(accepted()), dialog, SLOT(accept()));
+
+    int port = 21;
+    if (url.port() != -1) {
+        port = url.port();
+    }
+
+    label->setText(tr("A username and password are being requested by %1:%2.")
+                   .arg(url.host(), QString::number(port)));
+
+    formLa->addRow(label);
+
+    formLa->addRow(anonymousLogin);
+    formLa->addRow(userLab, user);
+    formLa->addRow(passLab, pass);
+
+    formLa->addWidget(box);
+
+    if (dialog->exec() != QDialog::Accepted) {
+        if (reply) {
+            reply->abort();
+            // is it safe?
+            reply->deleteLater();
+        }
+        else if (ftp) {
+            ftp->abort();
+            ftp->close();
+        }
+        return;
+    }
+
+    if (!anonymousLogin->isChecked()) {
+        auth->setUser(user->text());
+        auth->setPassword(pass->text());
+    }
+    else {
+        auth->setUser(QString());
+        auth->setPassword(QString());
     }
 }
 
 void NetworkManager::proxyAuthentication(const QNetworkProxy &proxy, QAuthenticator* auth)
 {
     QDialog* dialog = new QDialog(p_QupZilla);
-    dialog->setWindowTitle(tr("Proxy authorization required"));
+    dialog->setWindowTitle(tr("Proxy authorisation required"));
 
     QFormLayout* formLa = new QFormLayout(dialog);
 
@@ -357,6 +475,16 @@ QNetworkReply* NetworkManager::createRequest(QNetworkAccessManager::Operation op
     if (m_schemeHandlers.contains(req.url().scheme())) {
         reply = m_schemeHandlers[req.url().scheme()]->createRequest(op, req, outgoingData);
         if (reply) {
+            if (req.url().scheme() == "ftp") {
+                QVariant v = req.attribute((QNetworkRequest::Attribute)(QNetworkRequest::User + 100));
+                WebPage* webPage = static_cast<WebPage*>(v.value<void*>());
+                if (webPage) {
+                    connect(reply, SIGNAL(downloadRequest(const QNetworkRequest &)),
+                            webPage, SLOT(downloadRequested(const QNetworkRequest &)));
+                }
+                connect(reply, SIGNAL(ftpAuthenticationRequierd(const QUrl &, QAuthenticator*)),
+                        this, SLOT(ftpAuthentication(const QUrl &, QAuthenticator*)));
+            }
             return reply;
         }
     }

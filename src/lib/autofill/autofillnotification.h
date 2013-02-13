@@ -15,18 +15,19 @@
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * ============================================================ */
-#ifndef AUTOFILLWIDGET_H
-#define AUTOFILLWIDGET_H
+#ifndef AUTOFILLNOTIFICATION_H
+#define AUTOFILLNOTIFICATION_H
 
 #include <QUrl>
 
 #include "qz_namespace.h"
 #include "animatedwidget.h"
 #include "pageformcompleter.h"
+#include "autofill.h"
 
 namespace Ui
 {
-class AutoFillWidget;
+class AutoFillNotification;
 }
 
 class AnimatedWidget;
@@ -36,18 +37,22 @@ class QT_QUPZILLA_EXPORT AutoFillNotification : public AnimatedWidget
     Q_OBJECT
 
 public:
-    explicit AutoFillNotification(const QUrl &url, const PageFormData &formData);
+    explicit AutoFillNotification(const QUrl &url,
+                                  const PageFormData &formData,
+                                  const AutoFillData &updateData);
     ~AutoFillNotification();
 
 private slots:
+    void update();
     void remember();
     void never();
 
 private:
-    Ui::AutoFillWidget* ui;
+    Ui::AutoFillNotification* ui;
 
     QUrl m_url;
     PageFormData m_formData;
+    AutoFillData m_updateData;
 };
 
-#endif // AUTOFILLWIDGET_H
+#endif // AUTOFILLNOTIFICATION_H

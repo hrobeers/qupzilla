@@ -16,6 +16,7 @@
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * ============================================================ */
 #include "qztools.h"
+#include "mainapplication.h"
 
 #include <QTextDocument>
 #include <QDateTime>
@@ -31,6 +32,10 @@
 #include <QDesktopWidget>
 #include <QUrl>
 #include <QIcon>
+#include <QFileIconProvider>
+#include <QTemporaryFile>
+#include <QHash>
+#include <QSysInfo>
 
 #if QT_VERSION >= 0x050000
 #include <QUrlQuery>
@@ -337,6 +342,46 @@ QString QzTools::applyDirectionToPage(QString &pageContents)
     return pageContents;
 }
 
+QIcon QzTools::iconFromFileName(const QString &fileName)
+{
+    static QHash<QString, QIcon> iconCache;
+
+    QFileInfo tempInfo(fileName);
+    if (iconCache.contains(tempInfo.suffix())) {
+        return iconCache.value(tempInfo.suffix());
+    }
+
+    QFileIconProvider iconProvider;
+    QTemporaryFile tempFile(mApp->tempPath() + "/XXXXXX." + tempInfo.suffix());
+    tempFile.open();
+    tempInfo.setFile(tempFile.fileName());
+
+    QIcon icon(iconProvider.icon(tempInfo));
+    iconCache.insert(tempInfo.suffix(), icon);
+
+    return icon;
+}
+
+QString QT_QUPZILLA_EXPORT QzTools::resolveFromPath(const QString &name)
+{
+    const QString &path = qgetenv("PATH").trimmed();
+
+    if (path.isEmpty()) {
+        return QString();
+    }
+
+    QStringList dirs = path.split(QLatin1Char(':'), QString::SkipEmptyParts);
+
+    foreach(const QString & dir, dirs) {
+        QDir d(dir);
+        if (d.exists(name)) {
+            return d.absoluteFilePath(name);
+        }
+    }
+
+    return QString();
+}
+
 // Qt5 migration help functions
 bool QzTools::isCertificateValid(const QSslCertificate &cert)
 {
@@ -417,7 +462,37 @@ QString QzTools::buildSystem()
     return "UnixWare 7 / Open UNIX 8";
 #endif
 #ifdef Q_OS_WIN32
-    return "Windows";
+    QString str = "Windows";
+
+    switch (QSysInfo::windowsVersion()) {
+    case QSysInfo::WV_NT:
+        str.append(" NT");
+        break;
+
+    case QSysInfo::WV_2000:
+        str.append(" 2000");
+        break;
+
+    case QSysInfo::WV_XP:
+        str.append(" XP");
+        break;
+    case QSysInfo::WV_2003:
+        str.append(" XP Pro x64");
+        break;
+
+    case QSysInfo::WV_VISTA:
+        str.append(" Vista");
+        break;
+
+    case QSysInfo::WV_WINDOWS7:
+        str.append(" 7");
+        break;
+
+    default:
+        break;
+    }
+
+    return str;
 #endif
 #ifdef Q_OS_UNIX
     return "Unix";

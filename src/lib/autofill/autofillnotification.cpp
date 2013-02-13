@@ -22,11 +22,12 @@
 #include "animatedwidget.h"
 #include "iconprovider.h"
 
-AutoFillNotification::AutoFillNotification(const QUrl &url, const PageFormData &formData)
+AutoFillNotification::AutoFillNotification(const QUrl &url, const PageFormData &formData, const AutoFillData &updateData)
     : AnimatedWidget(AnimatedWidget::Down, 300, 0)
-    , ui(new Ui::AutoFillWidget)
+    , ui(new Ui::AutoFillNotification)
     , m_url(url)
     , m_formData(formData)
+    , m_updateData(updateData)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     ui->setupUi(widget());
@@ -43,8 +44,19 @@ AutoFillNotification::AutoFillNotification(const QUrl &url, const PageFormData &
         userPart = tr("for <b>%1</b>").arg(m_formData.username);
     }
 
-    ui->label->setText(tr("Do you want QupZilla to remember the password %1 %2?").arg(userPart, hostPart));
+    if (m_updateData.isValid()) {
+        ui->label->setText(tr("Do you want QupZilla to update saved password %1?").arg(userPart));
 
+        ui->remember->setVisible(false);
+        ui->never->setVisible(false);
+    }
+    else {
+        ui->label->setText(tr("Do you want QupZilla to remember the password %1 %2?").arg(userPart, hostPart));
+
+        ui->update->setVisible(false);
+    }
+
+    connect(ui->update, SIGNAL(clicked()), this, SLOT(update()));
     connect(ui->remember, SIGNAL(clicked()), this, SLOT(remember()));
     connect(ui->never, SIGNAL(clicked()), this, SLOT(never()));
     connect(ui->notnow, SIGNAL(clicked()), this, SLOT(hide()));
@@ -53,9 +65,15 @@ AutoFillNotification::AutoFillNotification(const QUrl &url, const PageFormData &
     startAnimation();
 }
 
+void AutoFillNotification::update()
+{
+    mApp->autoFill()->updateEntry(m_formData, m_updateData);
+    hide();
+}
+
 void AutoFillNotification::never()
 {
-    mApp->autoFill()->blockStoringfor(m_url);
+    mApp->autoFill()->blockStoringforUrl(m_url);
     hide();
 }
 

@@ -51,6 +51,10 @@ class UserAgentManager;
 class ProxyStyle;
 class RegisterQAppAssociation;
 class HTML5PermissionsManager;
+class Speller;
+#ifdef Q_OS_MAC
+class MacMenuReceiver;
+#endif
 
 class QT_QUPZILLA_EXPORT MainApplication : public QtSingleApplication
 {
@@ -75,13 +79,16 @@ public:
 
     QList<QupZilla*> mainWindows();
 
-    inline static MainApplication* getInstance() { return static_cast<MainApplication*>(QCoreApplication::instance()); }
-    inline QString currentProfilePath() { return m_activeProfil; }
-    inline QString currentLanguage() { return m_activeLanguage; }
-    inline bool isPrivateSession() { return m_isPrivateSession; }
-    inline bool isClosing() { return m_isClosing; }
-    inline bool isStartingAfterCrash() { return m_startingAfterCrash; }
-    inline int windowCount() { return m_mainWindows.count(); }
+    static MainApplication* getInstance() { return static_cast<MainApplication*>(QCoreApplication::instance()); }
+
+    bool isClosing() const;
+    bool isRestoring() const;
+    bool isPrivateSession() const;
+    bool isStartingAfterCrash() const;
+    int windowCount() const;
+    QString currentLanguageFile() const;
+    QString currentLanguage() const;
+    QString currentProfilePath() const;
 
     bool checkSettingsDir();
     void destroyRestoreManager();
@@ -107,13 +114,20 @@ public:
     QNetworkDiskCache* networkCache();
     DesktopNotificationsFactory* desktopNotifications();
     HTML5PermissionsManager* html5permissions();
+#ifdef USE_HUNSPELL
+    Speller* speller();
+#endif
 
     DatabaseWriter* dbWriter() { return m_dbWriter; }
     UserAgentManager* uaManager() { return m_uaManager; }
     RestoreManager* restoreManager() { return m_restoreManager; }
+
+#ifdef Q_OS_WIN
     RegisterQAppAssociation* associationManager();
+#endif
 
 #ifdef Q_OS_MAC
+    MacMenuReceiver* macMenuReceiver();
     bool event(QEvent* e);
 #endif
 
@@ -164,9 +178,11 @@ private:
     RestoreManager* m_restoreManager;
     ProxyStyle* m_proxyStyle;
     HTML5PermissionsManager* m_html5permissions;
+#ifdef USE_HUNSPELL
+    Speller* m_speller;
+#endif
     DatabaseWriter* m_dbWriter;
     UserAgentManager* m_uaManager;
-
     QList<QPointer<QupZilla> > m_mainWindows;
 
     QString m_activeProfil;
@@ -182,7 +198,12 @@ private:
     bool m_databaseConnected;
     QList<PostLaunchAction> m_postLaunchActions;
 
+#ifdef Q_OS_WIN
     RegisterQAppAssociation* m_registerQAppAssociation;
+#endif
+#ifdef Q_OS_MAC
+    MacMenuReceiver* m_macMenuReceiver;
+#endif
 };
 
 #endif // MAINAPPLICATION_H

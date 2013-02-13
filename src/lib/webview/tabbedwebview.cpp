@@ -37,8 +37,6 @@
 #include <QWebFrame>
 #include <QContextMenuEvent>
 
-bool TabbedWebView::m_navigationVisible = false;
-
 TabbedWebView::TabbedWebView(QupZilla* mainClass, WebTab* webTab)
     : WebView(webTab)
     , p_QupZilla(mainClass)
@@ -46,8 +44,6 @@ TabbedWebView::TabbedWebView(QupZilla* mainClass, WebTab* webTab)
     , m_webTab(webTab)
     , m_menu(new Menu(this))
     , m_mouseTrack(false)
-    , m_hasRss(false)
-    , m_rssChecked(false)
 {
     connect(this, SIGNAL(loadStarted()), this, SLOT(slotLoadStarted()));
     connect(this, SIGNAL(loadProgress(int)), this, SLOT(loadProgress(int)));
@@ -58,8 +54,6 @@ TabbedWebView::TabbedWebView(QupZilla* mainClass, WebTab* webTab)
     connect(this, SIGNAL(iconChanged()), this, SLOT(slotIconChanged()));
 
     connect(this, SIGNAL(statusBarMessage(QString)), p_QupZilla->statusBar(), SLOT(showMessage(QString)));
-
-    connect(mApp->networkManager(), SIGNAL(wantsFocus(QUrl)), this, SLOT(getFocus(QUrl)));
 
     connect(p_QupZilla, SIGNAL(setWebViewMouseTracking(bool)), this, SLOT(trackMouse(bool)));
 
@@ -132,9 +126,7 @@ void TabbedWebView::urlChanged(const QUrl &url)
 
 void TabbedWebView::loadProgress(int prog)
 {
-    if (prog > 60) {
-        checkRss();
-    }
+    Q_UNUSED(prog)
 
     if (isCurrent()) {
         p_QupZilla->updateLoadingActions();
@@ -151,9 +143,6 @@ void TabbedWebView::userLoadAction(const QUrl &url)
 
 void TabbedWebView::slotLoadStarted()
 {
-    m_rssChecked = false;
-    emit rssChanged(false);
-
     m_tabWidget->startTabAnimation(tabIndex());
 
     if (title().isNull()) {
@@ -243,20 +232,6 @@ void TabbedWebView::closeView()
     emit wantsCloseTab(tabIndex());
 }
 
-void TabbedWebView::checkRss()
-{
-    if (m_rssChecked) {
-        return;
-    }
-
-    m_rssChecked = true;
-    QWebFrame* frame = page()->mainFrame();
-    const QWebElementCollection &links = frame->findAllElements("link[type=\"application/rss+xml\"]");
-
-    m_hasRss = links.count() != 0;
-    emit rssChanged(m_hasRss);
-}
-
 void TabbedWebView::contextMenuEvent(QContextMenuEvent* event)
 {
     m_menu->clear();
@@ -264,7 +239,10 @@ void TabbedWebView::contextMenuEvent(QContextMenuEvent* event)
     const QWebHitTestResult &hitTest = page()->mainFrame()->hitTestContent(event->pos());
 
     createContextMenu(m_menu, hitTest, event->pos());
-    m_menu->addAction(p_QupZilla->adBlockIcon()->menuAction());
+
+    if (!hitTest.isContentEditable() && !hitTest.isContentSelected()) {
+        m_menu->addAction(p_QupZilla->adBlockIcon()->menuAction());
+    }
 
     m_menu->addSeparator();
     m_menu->addAction(tr("Inspect Element"), this, SLOT(inspectElement()));
@@ -301,23 +279,19 @@ void TabbedWebView::openNewTab()
     m_tabWidget->addView(QUrl());
 }
 
-void TabbedWebView::getFocus(const QUrl &urla)
+void TabbedWebView::setAsCurrentTab()
 {
-    if (urla == url()) {
-        m_tabWidget->setCurrentWidget(m_webTab);
-    }
+    m_tabWidget->setCurrentWidget(m_webTab);
 }
 
 void TabbedWebView::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_mouseTrack) {
-        if (m_navigationVisible) {
-            m_navigationVisible = false;
-            p_QupZilla->showNavigationWithFullscreen();
+        if (p_QupZilla->fullScreenNavigationVisible()) {
+            p_QupZilla->hideNavigationWithFullScreen();
         }
         else if (event->y() < 5) {
-            m_navigationVisible = true;
-            p_QupZilla->showNavigationWithFullscreen();
+            p_QupZilla->showNavigationWithFullScreen();
         }
     }
 

@@ -14,6 +14,14 @@ include(../defines.pri)
 include(../../translations/translations.pri)
 #include(../../tests/modeltest/modeltest.pri)
 
+isEqual(QT_MAJOR_VERSION, 5) {
+    include(3rdparty/qftp.pri)
+}
+
+contains(DEFINES, USE_QTWEBKIT_2_2) {
+    include(plugins/qtwebkit/qtwebkit-plugins.pri)
+}
+
 unix:!contains(DEFINES, "DISABLE_DBUS") QT += dbus
 
 INCLUDEPATH += 3rdparty\
@@ -194,7 +202,6 @@ SOURCES += \
     network/schemehandlers/qupzillaschemehandler.cpp \
     network/schemehandlers/adblockschemehandler.cpp \
     network/schemehandlers/fileschemehandler.cpp \
-    other/registerqappassociation.cpp \
     tools/listitemdelegate.cpp \
     bookmarks/bookmarkstree.cpp \
     tools/html5permissions/html5permissionsmanager.cpp \
@@ -202,6 +209,12 @@ SOURCES += \
     tools/html5permissions/html5permissionsdialog.cpp \
     autofill/pageformcompleter.cpp \
     autofill/autofill.cpp \
+    network/schemehandlers/ftpschemehandler.cpp \
+    autofill/autofillicon.cpp \
+    autofill/autofillwidget.cpp \
+    tools/menubar.cpp \
+    navigation/navigationcontainer.cpp \
+    tools/horizontallistwidget.cpp
 
 HEADERS  += \
     webview/tabpreview.h \
@@ -358,7 +371,6 @@ HEADERS  += \
     network/schemehandlers/qupzillaschemehandler.h \
     network/schemehandlers/adblockschemehandler.h \
     network/schemehandlers/fileschemehandler.h \
-    other/registerqappassociation.h \
     tools/listitemdelegate.h \
     bookmarks/bookmarkstree.h \
     tools/html5permissions/html5permissionsmanager.h \
@@ -366,6 +378,12 @@ HEADERS  += \
     tools/html5permissions/html5permissionsdialog.h \
     autofill/pageformcompleter.h \
     autofill/autofill.h \
+    network/schemehandlers/ftpschemehandler.h \
+    autofill/autofillicon.h \
+    autofill/autofillwidget.h \
+    tools/menubar.h \
+    navigation/navigationcontainer.h \
+    tools/horizontallistwidget.h
 
 FORMS    += \
     preferences/autofillmanager.ui \
@@ -414,6 +432,7 @@ FORMS    += \
     session/recoverywidget.ui \
     tools/html5permissions/html5permissionsnotification.ui \
     tools/html5permissions/html5permissionsdialog.ui \
+    autofill/autofillwidget.ui
 
 RESOURCES += \
     data/icons.qrc \
@@ -426,6 +445,16 @@ RESOURCES += \
     INSTALLS += target
 
     LIBS += -lX11
+}
+
+win32 {
+    HEADERS += other/registerqappassociation.h
+    SOURCES += other/registerqappassociation.cpp
+}
+
+mac {
+    HEADERS += other/macmenureceiver.h
+    SOURCES += other/macmenureceiver.cpp
 }
 
 message(===========================================)

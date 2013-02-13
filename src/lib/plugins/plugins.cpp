@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -163,7 +163,7 @@ void Plugins::loadAvailablePlugins()
 
     QStringList dirs;
     dirs << mApp->DATADIR + "plugins/"
-#ifdef QZ_WS_X11
+#if defined(QZ_WS_X11) && !defined(NO_SYSTEM_DATAPATH)
 #ifdef USE_LIBPATH
          << USE_LIBPATH "qupzilla/"
 #else
@@ -218,7 +218,7 @@ PluginInterface* Plugins::initPlugin(PluginInterface* interface, QPluginLoader* 
         return 0;
     }
 
-    qApp->installTranslator(interface->getTranslator(mApp->currentLanguage()));
+    qApp->installTranslator(interface->getTranslator(mApp->currentLanguageFile()));
 
     return interface;
 }

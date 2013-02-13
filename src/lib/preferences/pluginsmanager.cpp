@@ -1,6 +1,6 @@
 /* ============================================================
 * QupZilla - WebKit based browser
-* Copyright (C) 2010-2012  David Rosca <nowrep@gmail.com>
+* Copyright (C) 2010-2013  David Rosca <nowrep@gmail.com>
 *
 * This program is free software: you can redistribute it and/or modify
 * it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ void PluginsManager::save()
         QListWidgetItem* item = ui->list->item(i);
 
         if (item->checkState() == Qt::Checked) {
-            const Plugins::Plugin &plugin = item->data(Qt::UserRole + 10).value<Plugins::Plugin>();
+            const Plugins::Plugin plugin = item->data(Qt::UserRole + 10).value<Plugins::Plugin>();
 
             allowedPlugins.append(plugin.fullPath);
         }
@@ -187,7 +187,7 @@ void PluginsManager::refresh()
 
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(plugin.isLoaded() ? Qt::Checked : Qt::Unchecked);
-        item->setData(Qt::UserRole + 10, qVariantFromValue(plugin));
+        item->setData(Qt::UserRole + 10, QVariant::fromValue(plugin));
 
         ui->list->addItem(item);
     }
@@ -227,7 +227,7 @@ void PluginsManager::currentChanged(QListWidgetItem* item)
         return;
     }
 
-    const Plugins::Plugin &plugin = item->data(Qt::UserRole + 10).value<Plugins::Plugin>();
+    const Plugins::Plugin plugin = item->data(Qt::UserRole + 10).value<Plugins::Plugin>();
     bool showSettings = plugin.pluginSpec.hasSettings;
 
     if (!plugin.isLoaded()) {
@@ -259,7 +259,7 @@ void PluginsManager::itemChanged(QListWidgetItem* item)
         QMessageBox::critical(this, tr("Error!"), tr("Cannot load extension!"));
     }
 
-    item->setData(Qt::UserRole + 10, qVariantFromValue(plugin));
+    item->setData(Qt::UserRole + 10, QVariant::fromValue(plugin));
 
     connect(ui->list, SIGNAL(itemChanged(QListWidgetItem*)), this, SLOT(itemChanged(QListWidgetItem*)));
 
@@ -279,7 +279,7 @@ void PluginsManager::settingsClicked()
     if (!plugin.isLoaded()) {
         mApp->plugins()->loadPlugin(&plugin);
 
-        item->setData(Qt::UserRole + 10, qVariantFromValue(plugin));
+        item->setData(Qt::UserRole + 10, QVariant::fromValue(plugin));
     }
 
     if (plugin.isLoaded() && plugin.pluginSpec.hasSettings) {

@@ -106,10 +106,9 @@ WebPage::WebPage(QupZilla* mainClass)
 #if QTWEBKIT_FROM_2_3
     connect(this, SIGNAL(applicationCacheQuotaExceeded(QWebSecurityOrigin*, quint64, quint64)),
             this, SLOT(appCacheQuotaExceeded(QWebSecurityOrigin*, quint64)));
-#else
+#elif QTWEBKIT_FROM_2_2
     connect(this, SIGNAL(applicationCacheQuotaExceeded(QWebSecurityOrigin*, quint64)),
             this, SLOT(appCacheQuotaExceeded(QWebSecurityOrigin*, quint64)));
-
 #endif
 
 
@@ -230,6 +229,7 @@ void WebPage::finished()
         mainFrame()->setZoomFactor(mainFrame()->zoomFactor() - 1);
     }
 
+    // File scheme watcher
     if (url().scheme() == QLatin1String("file")) {
         QFileInfo info(url().toLocalFile());
         if (info.isFile()) {
@@ -249,6 +249,10 @@ void WebPage::finished()
         m_fileWatcher->removePaths(m_fileWatcher->files());
     }
 
+    // Autofill
+    m_autoFillData = mApp->autoFill()->completePage(this);
+
+    // AdBlock
     cleanBlockedObjects();
 }
 
@@ -419,6 +423,7 @@ void WebPage::dbQuotaExceeded(QWebFrame* frame)
     frame->securityOrigin().setDatabaseQuota(oldQuota * 2);
 }
 
+#if USE_QTWEBKIT_2_2
 void WebPage::appCacheQuotaExceeded(QWebSecurityOrigin* origin, quint64 originalQuota)
 {
     if (!origin) {
@@ -428,7 +433,6 @@ void WebPage::appCacheQuotaExceeded(QWebSecurityOrigin* origin, quint64 original
     origin->setApplicationCacheQuota(originalQuota * 2);
 }
 
-#if QTWEBKIT_FROM_2_2
 void WebPage::featurePermissionRequested(QWebFrame* frame, const QWebPage::Feature &feature)
 {
     mApp->html5permissions()->requestPermissions(this, frame, feature);
@@ -501,14 +505,14 @@ bool WebPage::acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest &r
 
     const QString &scheme = request.url().scheme();
 
-    if (scheme == QLatin1String("mailto") || scheme == QLatin1String("ftp")) {
+    if (scheme == QLatin1String("mailto")) {
         desktopServicesOpen(request.url());
         return false;
     }
 
     if (type == QWebPage::NavigationTypeFormResubmitted) {
         // Don't show this dialog if app is still starting
-        if (!view()->isVisible()) {
+        if (!view() || !view()->isVisible()) {
             return false;
         }
         QString message = tr("To show this page, QupZilla must resend request which do it again \n"
@@ -528,7 +532,7 @@ void WebPage::populateNetworkRequest(QNetworkRequest &request)
 {
     WebPage* pagePointer = this;
 
-    QVariant variant = qVariantFromValue((void*) pagePointer);
+    QVariant variant = QVariant::fromValue((void*) pagePointer);
     request.setAttribute((QNetworkRequest::Attribute)(QNetworkRequest::User + 100), variant);
 
     if (m_lastRequestUrl == request.url()) {
@@ -572,6 +576,21 @@ void WebPage::addAdBlockRule(const AdBlockRule* rule, const QUrl &url)
     }
 }
 
+QList<WebPage::AdBlockedEntry> WebPage::adBlockedEntries() const
+{
+    return m_adBlockedEntries;
+}
+
+bool WebPage::hasMultipleUsernames() const
+{
+    return m_autoFillData.count() > 1;
+}
+
+QList<AutoFillData> WebPage::autoFillData() const
+{
+    return m_autoFillData;
+}
+
 void WebPage::cleanBlockedObjects()
 {
     AdBlockManager* manager = AdBlockManager::instance();
@@ -612,7 +631,7 @@ void WebPage::cleanBlockedObjects()
     }
 
     // Apply domain-specific element hiding rules
-    QString elementHiding = AdBlockManager::instance()->elementHidingRulesForDomain(url());
+    QString elementHiding = manager->elementHidingRulesForDomain(url());
     if (elementHiding.isEmpty()) {
         return;
     }
@@ -621,6 +640,12 @@ void WebPage::cleanBlockedObjects()
 
     QWebElement bodyElement = docElement.findFirst("body");
     bodyElement.appendInside("<style type=\"text/css\">\n/* AdBlock for QupZilla */\n" + elementHiding);
+
+    // When hiding some elements, scroll position of page will change
+    // If user loaded anchor link in background tab (and didn't show it yet), fix the scroll position
+    if (view() && !view()->isVisible() && !url().fragment().isEmpty()) {
+        mainFrame()->scrollToAnchor(url().fragment());
+    }
 }
 
 QString WebPage::userAgentForUrl(const QUrl &url) const

@@ -29,6 +29,7 @@ class QLabel;
 class QVBoxLayout;
 class QSplitter;
 class QWebFrame;
+class QTimer;
 
 class Menu;
 class TabWidget;
@@ -66,8 +67,11 @@ public:
     ~QupZilla();
 
     void loadSettings();
-    void showNavigationWithFullscreen();
     void saveSideBarWidth();
+
+    bool fullScreenNavigationVisible() const;
+    void showNavigationWithFullScreen();
+    void hideNavigationWithFullScreen();
 
     void currentTabChanged();
     void updateLoadingActions();
@@ -87,21 +91,24 @@ public:
     TabbedWebView* weView(int index) const;
     LocationBar* locationBar() const;
 
-    inline TabWidget* tabWidget() { return m_tabWidget; }
-    inline BookmarksToolbar* bookmarksToolbar() { return m_bookmarksToolbar; }
-    inline StatusBarMessage* statusBarMessage() { return m_statusBarMessage; }
-    inline NavigationBar* navigationBar() { return m_navigationBar; }
-    inline SideBarManager* sideBarManager() { return m_sideBarManager; }
-    inline ProgressBar* progressBar() { return m_progressBar; }
-    inline QLabel* ipLabel() { return m_ipLabel; }
-    inline AdBlockIcon* adBlockIcon() { return m_adblockIcon; }
-    inline QMenu* menuHelp() { return m_menuHelp; }
-    inline QAction* actionRestoreTab() { return m_actionRestoreTab; }
-    inline QAction* actionReload() { return m_actionReload; }
-    inline QMenu* superMenu() { return m_superMenu; }
+    TabWidget* tabWidget() { return m_tabWidget; }
+    BookmarksToolbar* bookmarksToolbar() { return m_bookmarksToolbar; }
+    StatusBarMessage* statusBarMessage() { return m_statusBarMessage; }
+    NavigationBar* navigationBar() { return m_navigationBar; }
+    SideBarManager* sideBarManager() { return m_sideBarManager; }
+    ProgressBar* progressBar() { return m_progressBar; }
+    QLabel* ipLabel() { return m_ipLabel; }
+    AdBlockIcon* adBlockIcon() { return m_adblockIcon; }
+    QAction* actionRestoreTab() { return m_actionRestoreTab; }
+    QAction* actionReload() { return m_actionReload; }
+    QMenu* menuHelp() { return m_menuHelp; }
+    QMenu* superMenu() { return m_superMenu; }
 
-    inline bool isClosing() { return m_isClosing; }
-    inline QUrl homepageUrl() { return m_homepage; }
+    QWidget* navigationContainer() const;
+    void popupToolbarsMenu(const QPoint &pos);
+
+    bool isClosing() { return m_isClosing; }
+    QUrl homepageUrl() { return m_homepage; }
 
 signals:
     void startingCompleted();
@@ -113,9 +120,9 @@ public slots:
 
     void showWebInspector(bool toggle = true);
     void showBookmarksToolbar();
-    void loadActionUrl();
-    void loadActionUrlInNewTab();
-    void loadActionUrlInNewNotSelectedTab();
+    void loadActionUrl(QObject* obj = 0);
+    void loadActionUrlInNewTab(QObject* obj = 0);
+    void loadActionUrlInNewNotSelectedTab(QObject* obj = 0);
     void loadFolderBookmarks(Menu* menu);
 
     void bookmarkPage();
@@ -189,12 +196,19 @@ private slots:
     void zoomOut();
     void zoomReset();
     void fullScreen(bool make);
-    void changeEncoding();
+    void changeEncoding(QObject* obj = 0);
 
     void triggerCaretBrowsing();
+    void triggerTabsOnTop(bool enable);
 
     void closeWindow();
     bool quitApp();
+    void closeTab();
+    void restoreClosedTab(QObject* obj = 0);
+    void restoreAllClosedTabs();
+    void clearClosedTabsList();
+    void hideNavigationSlot();
+
 #ifdef Q_OS_WIN
     void applyBlurToMainWindow(bool force = false);
 #endif
@@ -209,6 +223,10 @@ private:
 
     void setupUi();
     void setupMenu();
+    void setupOtherActions();
+#ifdef Q_OS_MAC
+    void setupMacMenu();
+#endif
 
     void disconnectObjects();
 
@@ -226,6 +244,12 @@ private:
     void moveToVirtualDesktop(int desktopId);
 #endif
 
+    bool bookmarksMenuChanged();
+    void setBookmarksMenuChanged(bool changed);
+
+    QAction* menuBookmarksAction();
+    void setMenuBookmarksAction(QAction* action);
+
     bool m_historyMenuChanged;
     bool m_bookmarksMenuChanged;
     bool m_isClosing;
@@ -242,6 +266,7 @@ private:
     QMenu* m_menuTools;
     QMenu* m_menuHelp;
     QMenu* m_menuView;
+    QMenu* m_toolbarsMenu;
     Menu* m_menuBookmarks;
     Menu* m_menuHistory;
     QMenu* m_menuClosedTabs;
@@ -249,9 +274,6 @@ private:
     Menu* m_menuHistoryMost;
     QMenu* m_menuEncoding;
     QAction* m_menuBookmarksAction;
-#ifdef Q_OS_MAC
-    QMenuBar* m_macMenuBar;
-#endif
 
     QAction* m_actionAbout;
     QAction* m_actionPreferences;
@@ -264,6 +286,7 @@ private:
 #ifndef Q_OS_MAC
     QAction* m_actionShowMenubar;
 #endif
+    QAction* m_actionTabsOnTop;
     QAction* m_actionShowFullScreen;
     QAction* m_actionShowBookmarksSideBar;
     QAction* m_actionShowHistorySideBar;
@@ -280,6 +303,7 @@ private:
     AdBlockIcon* m_adblockIcon;
     QPointer<WebInspectorDockWidget> m_webInspectorDock;
 
+    QWidget* m_navigationContainer;
     BookmarksToolbar* m_bookmarksToolbar;
     TabWidget* m_tabWidget;
     QPointer<SideBar> m_sideBar;
@@ -300,12 +324,11 @@ private:
     bool m_useTabNumberShortcuts;
     bool m_useSpeedDialNumberShortcuts;
 
-    // Used for F11 FullScreen remember visibility
-    // of menubar and statusbar
+    // Used for F11 FullScreen remember visibility of menubar and statusbar
     bool m_menuBarVisible;
     bool m_statusBarVisible;
-    bool m_navigationVisible;
-    bool m_bookmarksToolBarVisible;
+    Qt::WindowStates m_windowStates;
+    QTimer* m_hideNavigationTimer;
 
     QList<QPointer<QWidget> > m_deleteOnCloseWidgets;
 };
